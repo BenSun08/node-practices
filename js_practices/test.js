@@ -26,7 +26,7 @@ const promise2 = 66
 const promise3 = new MyPromise((resolve, reject) => {
   setTimeout(() => {
     resolve(88)
-  }, 1500)
+  }, 5500)
 })
 
 MyPromise.all([promise, promise2, promise3]).then(value => {

@@ -30,7 +30,7 @@ module.exports = class MyPromise {
   }
 
   static resolve(value) {
-    if(vlaue instanceof MyPromise) {
+    if(value instanceof MyPromise) {
       return value
     } else {
       return new MyPromise((resolve) => {
@@ -50,7 +50,7 @@ module.exports = class MyPromise {
       let fullfilledCount = 0
       const resultList = new Array(promisesList.length)
       for(let i = 0; i < promisesList.length; i++) {
-        MyPromise.resolve(promisesList[i])
+        this.resolve(promisesList[i])
           .then(value => {
             fullfilledCount++      
             resultList[i] = value
@@ -67,7 +67,7 @@ module.exports = class MyPromise {
   static race(promisesList) {
     return new MyPromise((resolve, reject) => {
       for(let promise of promisesList) {
-        MyPromise.resolve(promise).then(v => resolve(v), r => reject(r))
+        this.resolve(promise).then(v => resolve(v), r => reject(r))
       }
     })
   }
