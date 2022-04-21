@@ -29,6 +29,49 @@ module.exports = class MyPromise {
     }
   }
 
+  static resolve(value) {
+    if(vlaue instanceof MyPromise) {
+      return value
+    } else {
+      return new MyPromise((resolve) => {
+        resolve(value)
+      })
+    }
+  }
+
+  static reject(reason) {
+    return new MyPromise((resolve, reject) => {
+      reject(reason)
+    })
+  }
+
+  static all(promisesList) {
+    return new MyPromise((resolve, reject) => {
+      let fullfilledCount = 0
+      const resultList = new Array(promisesList.length)
+      for(let i = 0; i < promisesList.length; i++) {
+        MyPromise.resolve(promisesList[i])
+          .then(value => {
+            fullfilledCount++      
+            resultList[i] = value
+            if(fullfilledCount === promisesList.length) {
+              resolve(resultList)
+            }
+          }, reason => {
+            reject(reason)
+          })
+      }
+    })
+  }
+
+  static race(promisesList) {
+    return new MyPromise((resolve, reject) => {
+      for(let promise of promisesList) {
+        MyPromise.resolve(promise).then(v => resolve(v), r => reject(r))
+      }
+    })
+  }
+
   then(onFullfilled, onRejected) {
     return new MyPromise((resolve, reject) => { // return a promise instance to support chaining
       if(this.status === 'PENDING') {
@@ -49,7 +92,7 @@ module.exports = class MyPromise {
           try {
             const rejectedFromLastPromise = onRejected(value)
             if(rejectedFromLastPromise instanceof MyPromise) {
-              rejectedFromLastPromise.then((resolve, reject))
+              rejectedFromLastPromise.then(resolve, reject)
             } else {
               reject(rejectedFromLastPromise)
             }
@@ -75,6 +118,37 @@ module.exports = class MyPromise {
       }
 
       if(onRejected && this.status === 'REJECTED') {
+        try {
+          const rejectedFromLastPromise =  onRejected(this.value)
+          if(rejectedFromLastPromise instanceof MyPromise) {
+            rejectedFromLastPromise.then(resolve, reject)
+          } else {
+            reject(rejectedFromLastPromise)
+          }
+        } catch(e) {
+          reject(e)
+        }
+      }
+    })
+  }
+
+  catch(onRejected) {
+    return new MyPromise((resolve, reject) => {
+      if(this.status === 'PENDING') {
+        this.rejectHandlers.push((value) => {
+          try {
+            const rejectedFromLastPromise = onRejected(value)
+            if(rejectedFromLastPromise instanceof MyPromise) {
+              rejectedFromLastPromise.then(resolve, reject)
+            } else {
+              reject(rejectedFromLastPromise)
+            }
+          } catch(e) {
+            reject(e)
+          }
+        })
+      }
+      if(this.status === 'REJECTED') {
         try {
           const rejectedFromLastPromise =  onRejected(this.value)
           if(rejectedFromLastPromise instanceof MyPromise) {
