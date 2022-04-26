@@ -11,73 +11,73 @@ module.exports = class MyPromise {
   constructor(handler) {
     this.status = 'PENDING'
     this.value = undefined
+    this.handlers = []
+
     this.resolveHandlers = [] // store handlers to support asynchronous execution
     this.rejectHandlers = []
+
+    this.handle = (handler) => {
+      if(this.status === 'PENDING') {
+        this.handlers.push(handler)
+      } else if(this.status === 'FULLFILLED') {
+        handler.onFullfilled(this.value)
+      } else if(this.status === 'REJECTED') {
+        handler.onRejected(this.value)
+      }
+    }
+
+    const getThen(value) {
+      if(typeof value === 'object' || typeof value === 'function') {
+        const then = value.then
+        if(typeof then === 'function') {
+          return then
+        } 
+      } 
+      return null
+    }
+
 
     const resolve = (value) => {
       this.status = 'FULLFILLED'
       this.value = value
-      this.resolveHandlers.forEach(fn => fn(this.value))
+      this.handlers.forEach(this.handle)
     }
 
-    const reject = (error) => {
+    const reject = (reason) => {
       this.status = 'REJECTED'
-      this.value = error
-      this.rejectHandlers.forEach(fn => fn(this.value))
+      this.value = reason
+      this.handlers.forEach(this.handle)
     }
 
     try {
       handler(resolve, reject)
-    } catch(e) {
-      reject(e) // *** remember handling errors
+    } catch(reason) {
+      reject(reason) // *** remember handling errors
     }
-  }
-
-  static resolve(value) {
-    if(value instanceof MyPromise) {
-      return value
-    } else {
-      return new MyPromise((resolve) => {
-        resolve(value)
-      })
-    }
-  }
-
-  static reject(reason) {
-    return new MyPromise((resolve, reject) => {
-      reject(reason)
-    })
-  }
-
-  static all(promisesList) {
-    return new MyPromise((resolve, reject) => {
-      let fullfilledCount = 0
-      const resultList = new Array(promisesList.length)
-      for(let i = 0; i < promisesList.length; i++) {
-        this.resolve(promisesList[i])
-          .then(value => {
-            fullfilledCount++      
-            resultList[i] = value
-            if(fullfilledCount === promisesList.length) {
-              resolve(resultList)
-            }
-          }, reason => {
-            reject(reason)
-          })
-      }
-    })
-  }
-
-  static race(promisesList) {
-    return new MyPromise((resolve, reject) => {
-      for(let promise of promisesList) {
-        this.resolve(promise).then(v => resolve(v), r => reject(r))
-      }
-    })
   }
 
   then(onFullfilled, onRejected) {
+    const _this = this;
     return new MyPromise((resolve, reject) => { // return a promise instance to support chaining
+      const fullFilledHandler = (value) => {
+        try {
+          resolve(onFullfilled(value))
+        } catch (reason) {
+          reject(reason)
+        }
+      }
+
+      const rejectedHandler = (value) => {
+        try {
+          resolve(onRejected(value))
+        } catch (reason) {
+          reject(reason)
+        }
+      }
+
+      _this.handle({ onFullfilled: fullFilledHandler, onRejected: rejectedHandler })
+
+
       if(this.status === 'PENDING') {
         this.resolveHandlers.push((value) => {
           try {
@@ -96,7 +96,7 @@ module.exports = class MyPromise {
           try {
             const rejectedFromLastPromise = onRejected(value)
             if(rejectedFromLastPromise instanceof MyPromise) {
-              rejectedFromLastPromise.then(resolve, reject)
+              rejectedFromLastPromise.then((resolve, reject))
             } else {
               reject(rejectedFromLastPromise)
             }
@@ -122,37 +122,6 @@ module.exports = class MyPromise {
       }
 
       if(onRejected && this.status === 'REJECTED') {
-        try {
-          const rejectedFromLastPromise =  onRejected(this.value)
-          if(rejectedFromLastPromise instanceof MyPromise) {
-            rejectedFromLastPromise.then(resolve, reject)
-          } else {
-            reject(rejectedFromLastPromise)
-          }
-        } catch(e) {
-          reject(e)
-        }
-      }
-    })
-  }
-
-  catch(onRejected) {
-    return new MyPromise((resolve, reject) => {
-      if(this.status === 'PENDING') {
-        this.rejectHandlers.push((value) => {
-          try {
-            const rejectedFromLastPromise = onRejected(value)
-            if(rejectedFromLastPromise instanceof MyPromise) {
-              rejectedFromLastPromise.then(resolve, reject)
-            } else {
-              reject(rejectedFromLastPromise)
-            }
-          } catch(e) {
-            reject(e)
-          }
-        })
-      }
-      if(this.status === 'REJECTED') {
         try {
           const rejectedFromLastPromise =  onRejected(this.value)
           if(rejectedFromLastPromise instanceof MyPromise) {
