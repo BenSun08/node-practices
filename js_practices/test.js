@@ -1,4 +1,4 @@
-const MyPromise = require('./MyPromise')
+const MyPromise = require('./MyPromise2')
 
 const promise = new MyPromise((resolve, reject) => {
   let value = 1;
