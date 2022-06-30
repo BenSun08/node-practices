@@ -1,0 +1,13 @@
+{
+  "name": "beginner",
+  "version": "1.0.0",
+  "description": "my first nodejs practice",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "pm2 start src/index.js --name beginner --watch",
+    "stop": "pm2 stop beginner"
+  },
+  "author": "San Wang",
+  "license": "ISC"
+}
